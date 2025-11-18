@@ -1,309 +1,262 @@
-import requests
-from urllib.parse import urlparse, urljoin
+import aiohttp
+import asyncio
+from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 from difflib import SequenceMatcher
-import csv
-import io
-import pandas as pd
+import re
 
-headers = {
-    "User-Agent": "Mozilla/5.0"
+# ============================================================================
+# 0. CONFIG
+# ============================================================================
+DEFAULT_TIMEOUT = 12
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    )
 }
 
 
-# -----------------------------------------------------
-# BASIC UTILITIES
-# -----------------------------------------------------
+# ============================================================================
+# 1. BASIC CHECK FUNCTIONS
+# ============================================================================
 
-def is_valid_url(url: str) -> bool:
-    """Check if URL is well-formed."""
+async def check_status(url):
+    """
+    Returns HTTP status code or None if unreachable.
+    """
     try:
-        parsed = urlparse(url)
-        return bool(parsed.scheme) and bool(parsed.netloc)
+        async with aiohttp.ClientSession(headers=HEADERS) as session:
+            async with session.get(url, timeout=DEFAULT_TIMEOUT, allow_redirects=True) as resp:
+                return resp.status
+    except Exception:
+        return None
+
+
+async def fetch_html(url):
+    """
+    Fetch raw HTML for scraping.
+    Returns string or None.
+    """
+    try:
+        async with aiohttp.ClientSession(headers=HEADERS) as session:
+            async with session.get(url, timeout=DEFAULT_TIMEOUT) as response:
+                if response.status < 400:
+                    return await response.text()
+                return None
+    except Exception:
+        return None
+
+
+async def fetch_head(url):
+    """
+    Sends HEAD request to detect faster dead links.
+    """
+    try:
+        async with aiohttp.ClientSession(headers=HEADERS) as session:
+            async with session.head(url, timeout=DEFAULT_TIMEOUT, allow_redirects=True) as response:
+                return response.status
     except:
-        return False
+        return None
 
 
-def check_url_status(url: str) -> dict:
-    """Return status code, final URL, and redirection info."""
-    try:
-        r = requests.get(url, timeout=6, allow_redirects=True, headers=headers)
+# ============================================================================
+# 2. SMART HTML PARSING ENGINE
+# ============================================================================
 
-        return {
-            "input_url": url,
-            "final_url": r.url,
-            "status_code": r.status_code,
-            "ok": (200 <= r.status_code < 400)
-        }
-    except Exception as e:
-        return {
-            "input_url": url,
-            "final_url": None,
-            "status_code": None,
-            "ok": False
-        }
+def extract_internal_links(base_url, soup):
+    """
+    Extracts internal links belonging to same domain.
+    Returns list of URLs.
+    """
+    base_domain = urlparse(base_url).netloc
+    links = []
 
+    for tag in soup.find_all("a", href=True):
+        href = tag["href"]
+        full_link = urljoin(base_url, href)
 
-# -----------------------------------------------------
-# URL NORMALIZATION & VARIANTS
-# -----------------------------------------------------
+        if urlparse(full_link).netloc == base_domain:
+            if full_link not in links:
+                links.append(full_link)
 
-def normalize_url(url):
-    """Fix www, https, remove query junk."""
-    parsed = urlparse(url)
-
-    scheme = "https"
-
-    netloc = parsed.netloc
-    if not netloc.startswith("www."):
-        netloc = "www." + netloc
-
-    clean_query = ""
-
-    normalized = f"{scheme}://{netloc}{parsed.path}"
-    return normalized
+    return links
 
 
-def try_simple_variants(url):
-    """Generate multiple possible corrected versions of the input URL."""
-    variants = set()
-    parsed = urlparse(url)
+def get_meta_refresh(soup, base_url):
+    meta = soup.find("meta", attrs={"http-equiv": "refresh"})
+    if not meta:
+        return None
 
-    # Normalized
-    variants.add(normalize_url(url))
+    content = meta.get("content", "")
+    match = re.search(r'URL=(.+)', content, re.IGNORECASE)
+    if match:
+        return urljoin(base_url, match.group(1).strip())
 
-    # Add/remove trailing slash
-    if url.endswith("/"):
-        variants.add(url.rstrip("/"))
-    else:
-        variants.add(url + "/")
-
-    # Try http & https
-    variants.add("http://" + parsed.netloc + parsed.path)
-    variants.add("https://" + parsed.netloc + parsed.path)
-
-    return list(variants)
+    return None
 
 
-def url_works(url):
-    """Returns True if URL returns HTTP 200."""
-    try:
-        r = requests.get(url, timeout=5, allow_redirects=True, headers=headers)
-        return r.status_code == 200
-    except:
-        return False
+def get_canonical(soup, base_url):
+    canonical = soup.find("link", rel="canonical")
+    if canonical and canonical.get("href"):
+        return urljoin(base_url, canonical["href"].strip())
+    return None
 
 
-# -----------------------------------------------------
-# PARENT PATH RECOVERY
-# -----------------------------------------------------
+def detect_moved_text(soup, base_url):
+    moved_patterns = [
+        r"this page has moved",
+        r"moved here",
+        r"click here",
+        r"new page",
+        r"updated page",
+        r"this page is now available",
+    ]
 
-def try_parent_paths(url):
-    """Recover URL by decreasing the path depth."""
-    parsed = urlparse(url)
-    path = parsed.path.rstrip("/")
-
-    candidates = []
-
-    # Example:
-    # /blog/article/2020 → /blog/article → /blog → /
-    while "/" in path:
-        path = path[:path.rfind("/")]
-        if not path:
-            break
-        candidate = f"https://{parsed.netloc}{path}/"
-        candidates.append(candidate)
-
-    # Try only domain
-    candidates.append(f"https://{parsed.netloc}/")
-
-    return candidates
+    for pattern in moved_patterns:
+        text = soup.find(string=re.compile(pattern, re.IGNORECASE))
+        if text:
+            parent_a = text.parent.find("a")
+            if parent_a and parent_a.get("href"):
+                return urljoin(base_url, parent_a["href"])
+    return None
 
 
-# -----------------------------------------------------
-# HOMEPAGE CRAWLING + FUZZY MATCHING
-# -----------------------------------------------------
+# ============================================================================
+# 3. FUZZY LOGIC MATCHING FOR BEST ALTERNATIVE
+# ============================================================================
 
-def crawl_homepage(url):
-    """Fetch homepage links for fuzzy alternative detection."""
-    parsed = urlparse(url)
-    homepage = f"https://{parsed.netloc}/"
+def score_similarity(original_url, target_url):
+    """
+    Computes fuzzy similarity score between URLs.
+    Also adds bonuses for keywords indicating new/updated content.
+    """
+    similarity = SequenceMatcher(None, original_url, target_url).ratio()
 
-    try:
-        r = requests.get(homepage, timeout=7, headers=headers)
-        soup = BeautifulSoup(r.text, "html.parser")
-        links = []
+    keywords = [
+        "latest", "update", "new", "2024", "2025", "news",
+        "blog", "article", "post", "archive"
+    ]
 
-        for a in soup.find_all("a", href=True):
-            link = urljoin(homepage, a["href"])
-            links.append(link)
-
-        return links
-    except:
-        return []
+    keyword_bonus = sum(0.05 for kw in keywords if kw in target_url.lower())
+    return similarity + keyword_bonus
 
 
-def fuzzy_best_match(broken_url, candidates):
-    """Find best matching link from homepage."""
-    broken_name = urlparse(broken_url).path.split("/")[-1]
+def pick_best_match(original, candidates):
+    if not candidates:
+        return None
 
-    best = None
-    best_score = 0
+    scored = sorted(
+        candidates,
+        key=lambda c: score_similarity(original, c),
+        reverse=True
+    )
 
-    for c in candidates:
-        name = urlparse(c).path.split("/")[-1]
-        score = SequenceMatcher(None, broken_name, name).ratio()
+    best = scored[0]
+    similarity = SequenceMatcher(None, original, best).ratio()
 
-        if score > best_score:
-            best = c
-            best_score = score
-
-    # Threshold to avoid random matches
-    if best_score > 0.45:
+    # Only accept if similarity is reasonably close (0.25+)
+    if similarity > 0.25:
         return best
+
     return None
 
 
-# -----------------------------------------------------
-# MAIN FUNCTION: FIND ALTERNATIVE LINK
-# -----------------------------------------------------
+# ============================================================================
+# 4. MAIN ALTERNATIVE FINDER
+# ============================================================================
 
-def find_alternative(url):
+async def find_alternative(url):
     """
-    Try to find a valid alternative for a dead/redirected URL.
-    Steps:
-    1. Simple variants (https, www, trailing slash)
-    2. Parent path recovery
-    3. Homepage crawl + fuzzy matching
+    Extracts best alternative URL using:
+    - Meta refresh
+    - Canonical
+    - "This page moved" text
+    - Internal link scanning + fuzzy match
     """
 
-    # STEP 1: Try simple variants
-    for u in try_simple_variants(url):
-        if url_works(u):
-            return u
+    html = await fetch_html(url)
+    if not html:
+        return None
 
-    # STEP 2: Parent path fallback
-    for u in try_parent_paths(url):
-        if url_works(u):
-            return u
+    soup = BeautifulSoup(html, "html.parser")
 
-    # STEP 3: Homepage crawl & fuzzy match
-    homepage_links = crawl_homepage(url)
-    if homepage_links:
-        match = fuzzy_best_match(url, homepage_links)
-        if match and url_works(match):
-            return match
+    # (A) meta refresh
+    meta_refresh = get_meta_refresh(soup, url)
+    if meta_refresh:
+        return meta_refresh
 
-    # STOP HERE (as requested)
-    return None
+    # (B) canonical
+    canonical = get_canonical(soup, url)
+    if canonical:
+        return canonical
+
+    # (C) moved text
+    moved = detect_moved_text(soup, url)
+    if moved:
+        return moved
+
+    # (D) internal link mining → score → best candidate
+    internal_links = extract_internal_links(url, soup)
+    return pick_best_match(url, internal_links)
 
 
-# -----------------------------------------------------
-# PROCESS A SINGLE URL (used by your API)
-# -----------------------------------------------------
+# ============================================================================
+# 5. PROCESS A SINGLE URL (MAIN FUNCTION)
+# ============================================================================
 
-def process_single_url(url: str):
+async def process_single_url(url):
     """
-    Combined function used by your API:
-    - check if URL works
-    - if not, try to find alternative
+    Returns:
+    {
+        "url": original,
+        "status": HTTP status or None,
+        "alternative": working alternative or None,
+        "final": final working URL (alt if original fails)
+    }
     """
-    if not is_valid_url(url):
+
+    # Quick HEAD check
+    head_status = await fetch_head(url)
+
+    if head_status and head_status < 400:
         return {
             "url": url,
-            "valid": False,
-            "status": None,
-            "final_url": None,
-            "alternative": None
+            "status": head_status,
+            "alternative": None,
+            "final": url
         }
 
-    status = check_url_status(url)
+    # GET re-check
+    get_status = await check_status(url)
 
-    if status["ok"]:
+    if get_status and get_status < 400:
         return {
             "url": url,
-            "valid": True,
-            "status": status["status_code"],
-            "final_url": status["final_url"],
-            "alternative": None
+            "status": get_status,
+            "alternative": None,
+            "final": url
         }
 
-    # URL broken → find alternative
-    alternative = find_alternative(url)
+    # If URL is dead → find alternative
+    alt = await find_alternative(url)
+    final_status = await check_status(alt) if alt else None
 
     return {
         "url": url,
-        "valid": False,
-        "status": status["status_code"],
-        "final_url": status["final_url"],
-        "alternative": alternative
+        "status": get_status or head_status,
+        "alternative": alt,
+        "final": alt if final_status and final_status < 400 else None
     }
 
 
-def extract_urls_from_file(file):
-    """Reads URLs from CSV or XLSX and returns a list."""
-    filename = file.filename.lower()
+# ============================================================================
+# 6. PROCESS MULTIPLE URLs (BULK SUPPORT)
+# ============================================================================
 
-    urls = []
-
-    try:
-        if filename.endswith(".csv"):
-            stream = io.StringIO(file.stream.read().decode("utf-8"))
-            reader = csv.reader(stream)
-            for row in reader:
-                if row:
-                    urls.append(row[0].strip())
-
-        elif filename.endswith(".xlsx"):
-            df = pd.read_excel(file)
-            first_col = df.columns[0]
-            urls = df[first_col].dropna().astype(str).tolist()
-
-    except Exception as e:
-        print("File read error:", e)
-
-    return urls
-
-
-def process_bulk_file(file):
-    """Processes CSV or XLSX and returns results list."""
-    urls = extract_urls_from_file(file)
-    results = []
-
-    for url in urls:
-        try:
-            result = process_single_url(url)
-            results.append(result)
-        except Exception as e:
-            results.append({
-                "url": url,
-                "valid": False,
-                "status": None,
-                "final_url": None,
-                "alternative": None,
-                "error": str(e)
-            })
-
-    return results
-
-def generate_csv(results):
-    """Creates CSV content from the bulk results list."""
-    output = io.StringIO()
-    writer = csv.writer(output)
-
-    # Header
-    writer.writerow(["Input URL", "Working", "Status", "Final URL", "Alternative", "Error"])
-
-    # Rows
-    for r in results:
-        writer.writerow([
-            r.get("input"),
-            r.get("working"),
-            r.get("status"),
-            r.get("final_url"),
-            r.get("alternative"),
-            r.get("error")
-        ])
-
-    output.seek(0)
-    return output
+async def process_bulk(urls):
+    """
+    Process multiple URLs concurrently using asyncio.gather.
+    """
+    tasks = [asyncio.create_task(process_single_url(u)) for u in urls]
+    return await asyncio.gather(*tasks)
