@@ -51,6 +51,16 @@ def api_find():
     }), 200
 
 
+from flask import jsonify
+
+@api_bp.route("/find", methods=["GET"])
+def api_find():
+    url = request.args.get("url")
+    if not url:
+        return jsonify({"success": False, "error": "Missing ?url"}), 400
+
+    result = process_single_url(url)
+    return jsonify({"success": True, "data": result}), 200
 
 
 @main_blueprint.route("/download", methods=["POST"])
