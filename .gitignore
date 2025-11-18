@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+
+# Byte-compiled
+*.pyo
+*.pyd
+
+# VS Code
+.vscode/
+
+# Environments
+venv/
+env/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
