@@ -68,6 +68,23 @@ def api_bulk():
     }), 200
 
 
+@main_blueprint.route("/download", methods=["GET"])
+def download_results():
+    results = session.get("bulk_results")
+
+    if not results:
+        return "No results to download", 400
+
+    csv_file = generate_csv(results)
+
+    return send_file(
+        io.BytesIO(csv_file.getvalue().encode()),
+        mimetype="text/csv",
+        as_attachment=True,
+        download_name="broken-link-results.csv"
+    )
+
+
 @main_blueprint.after_request
 def add_headers(response):
     response.headers["Content-Type"] = "application/json; charset=utf-8"
