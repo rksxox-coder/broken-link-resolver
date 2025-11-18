@@ -114,10 +114,13 @@ def health_check():
     return {"status": "ok"}, 200
 
 
+# keep CORS headers, do NOT override Content-Type for HTML pages
 @main_blueprint.after_request
 def add_headers(response):
-    response.headers["Content-Type"] = "application/json; charset=utf-8"
+    # Allow JS frontends to call the API
     response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
     return response
+
 
