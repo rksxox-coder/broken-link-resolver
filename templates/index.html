@@ -1,38 +1,30 @@
+<!-- templates/base.html -->
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>Broken Link Resolver</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+
+    <!-- Tailwind CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
-<body>
 
-<div class="header">🔗 Broken Link Resolver</div>
+<body class="bg-gray-950 text-gray-200 min-h-screen">
 
-<div class="container">
-
-    <h2>Check a Single URL</h2>
-    <form action="/check" method="POST">
-        <label>Enter URL</label>
-        <input type="text" name="url" placeholder="https://example.com/page">
-        <button type="submit">Check Now</button>
-    </form>
-
-    <hr>
-
-    <h2>Upload CSV / Excel</h2>
-
-    <form action="/upload" method="POST" enctype="multipart/form-data">
-        <div id="drop-area" class="file-drop">
-            Drag & Drop File Here<br><small>(CSV or XLSX)</small>
+    <!-- HEADER -->
+    <header class="p-5 border-b border-gray-800 bg-gray-900">
+        <div class="container mx-auto text-center text-2xl font-bold text-blue-400">
+            🔗 Broken Link Resolver
         </div>
+    </header>
 
-        <br>
-        <input type="file" id="file-input" name="file" style="display:none;">
-        <button type="submit">Upload & Process</button>
-    </form>
+    <!-- MAIN CONTENT -->
+    <main class="container mx-auto py-10 px-4">
+        {% block content %}{% endblock %}
+    </main>
 
-</div>
-
-<script src="/static/js/main.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
