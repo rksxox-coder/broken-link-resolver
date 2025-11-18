@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h1>Results</h1>
+<h1>📄 URL Results</h1>
 
 {% if result %}
     <div class="result-box">
@@ -12,9 +12,10 @@
         {% else %}
             <p class="error">✗ This URL is broken</p>
             <p>Status Code: {{ result.status }}</p>
+
             {% if result.alternative %}
-                <p class="alt-link">Suggested Alternative:  
-                    <a href="{{ result.alternative }}" target="_blank">
+                <p>Suggested Alternative:
+                    <a class="alt-link" href="{{ result.alternative }}" target="_blank">
                         {{ result.alternative }}
                     </a>
                 </p>
@@ -31,25 +32,25 @@
             <p><strong>Input URL:</strong> {{ item.input }}</p>
 
             {% if item.working %}
-                <p class="success">✓ This URL is working ({{ item.status }})</p>
+                <p class="success">✓ Working ({{ item.status }})</p>
             {% else %}
-                <p class="error">✗ This URL is broken</p>
+                <p class="error">✗ Broken</p>
                 <p>Status Code: {{ item.status }}</p>
 
                 {% if item.alternative %}
-                    <p class="alt-link">Suggested Alternative:
-                        <a href="{{ item.alternative }}" target="_blank">
+                    <p>Suggested:
+                        <a class="alt-link" href="{{ item.alternative }}" target="_blank">
                             {{ item.alternative }}
                         </a>
                     </p>
                 {% else %}
-                    <p>No alternative link found.</p>
+                    <p>No alternative found.</p>
                 {% endif %}
             {% endif %}
         </div>
     {% endfor %}
 {% endif %}
 
-<a href="/" style="display:block; text-align:center; margin-top:20px; color:#0056b3;">← Check More URLs</a>
+<a href="/" class="back-link">← Check More URLs</a>
 
 {% endblock %}
