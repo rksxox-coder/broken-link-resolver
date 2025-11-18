@@ -1,150 +1,237 @@
 import requests
+from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin, urlparse
-import difflib
+from difflib import SequenceMatcher
 
-# ----------------------------------------------------
-# User-Agent to avoid blocking by websites (BMW etc.)
-# ----------------------------------------------------
-HEADERS = {
-    "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+headers = {
+    "User-Agent": "Mozilla/5.0"
 }
 
 
-# ----------------------------------------------------
-# Safe GET with retry + timeout
-# ----------------------------------------------------
-def safe_get(url, timeout=12, retries=3):
-    for attempt in range(retries):
-        try:
-            return requests.get(url, timeout=timeout, headers=HEADERS)
-        except requests.exceptions.Timeout:
-            if attempt == retries - 1:
-                return None
-            continue
-        except Exception:
-            return None
+# -----------------------------------------------------
+# BASIC UTILITIES
+# -----------------------------------------------------
+
+def is_valid_url(url: str) -> bool:
+    """Check if URL is well-formed."""
+    try:
+        parsed = urlparse(url)
+        return bool(parsed.scheme) and bool(parsed.netloc)
+    except:
+        return False
+
+
+def check_url_status(url: str) -> dict:
+    """Return status code, final URL, and redirection info."""
+    try:
+        r = requests.get(url, timeout=6, allow_redirects=True, headers=headers)
+
+        return {
+            "input_url": url,
+            "final_url": r.url,
+            "status_code": r.status_code,
+            "ok": (200 <= r.status_code < 400)
+        }
+    except Exception as e:
+        return {
+            "input_url": url,
+            "final_url": None,
+            "status_code": None,
+            "ok": False
+        }
+
+
+# -----------------------------------------------------
+# URL NORMALIZATION & VARIANTS
+# -----------------------------------------------------
+
+def normalize_url(url):
+    """Fix www, https, remove query junk."""
+    parsed = urlparse(url)
+
+    scheme = "https"
+
+    netloc = parsed.netloc
+    if not netloc.startswith("www."):
+        netloc = "www." + netloc
+
+    clean_query = ""
+
+    normalized = f"{scheme}://{netloc}{parsed.path}"
+    return normalized
+
+
+def try_simple_variants(url):
+    """Generate multiple possible corrected versions of the input URL."""
+    variants = set()
+    parsed = urlparse(url)
+
+    # Normalized
+    variants.add(normalize_url(url))
+
+    # Add/remove trailing slash
+    if url.endswith("/"):
+        variants.add(url.rstrip("/"))
+    else:
+        variants.add(url + "/")
+
+    # Try http & https
+    variants.add("http://" + parsed.netloc + parsed.path)
+    variants.add("https://" + parsed.netloc + parsed.path)
+
+    return list(variants)
+
+
+def url_works(url):
+    """Returns True if URL returns HTTP 200."""
+    try:
+        r = requests.get(url, timeout=5, allow_redirects=True, headers=headers)
+        return r.status_code == 200
+    except:
+        return False
+
+
+# -----------------------------------------------------
+# PARENT PATH RECOVERY
+# -----------------------------------------------------
+
+def try_parent_paths(url):
+    """Recover URL by decreasing the path depth."""
+    parsed = urlparse(url)
+    path = parsed.path.rstrip("/")
+
+    candidates = []
+
+    # Example:
+    # /blog/article/2020 → /blog/article → /blog → /
+    while "/" in path:
+        path = path[:path.rfind("/")]
+        if not path:
+            break
+        candidate = f"https://{parsed.netloc}{path}/"
+        candidates.append(candidate)
+
+    # Try only domain
+    candidates.append(f"https://{parsed.netloc}/")
+
+    return candidates
+
+
+# -----------------------------------------------------
+# HOMEPAGE CRAWLING + FUZZY MATCHING
+# -----------------------------------------------------
+
+def crawl_homepage(url):
+    """Fetch homepage links for fuzzy alternative detection."""
+    parsed = urlparse(url)
+    homepage = f"https://{parsed.netloc}/"
+
+    try:
+        r = requests.get(homepage, timeout=7, headers=headers)
+        soup = BeautifulSoup(r.text, "html.parser")
+        links = []
+
+        for a in soup.find_all("a", href=True):
+            link = urljoin(homepage, a["href"])
+            links.append(link)
+
+        return links
+    except:
+        return []
+
+
+def fuzzy_best_match(broken_url, candidates):
+    """Find best matching link from homepage."""
+    broken_name = urlparse(broken_url).path.split("/")[-1]
+
+    best = None
+    best_score = 0
+
+    for c in candidates:
+        name = urlparse(c).path.split("/")[-1]
+        score = SequenceMatcher(None, broken_name, name).ratio()
+
+        if score > best_score:
+            best = c
+            best_score = score
+
+    # Threshold to avoid random matches
+    if best_score > 0.45:
+        return best
     return None
 
 
-# ----------------------------------------------------
-# Extract slug from a URL
-# ex: https://site.com/a/b/c.html → c
-# ----------------------------------------------------
-def get_slug(url):
-    path = urlparse(url).path
-    if not path:
-        return ""
-    parts = [p for p in path.split("/") if p]
-    if not parts:
-        return ""
-    slug = parts[-1].replace(".html", "").replace(".htm", "")
-    return slug.lower()
+# -----------------------------------------------------
+# MAIN FUNCTION: FIND ALTERNATIVE LINK
+# -----------------------------------------------------
 
-
-# ----------------------------------------------------
-# Find the best alternative link
-# ----------------------------------------------------
 def find_alternative(url):
-    try:
-        base = "{uri.scheme}://{uri.netloc}".format(uri=urlparse(url))
+    """
+    Try to find a valid alternative for a dead/redirected URL.
+    Steps:
+    1. Simple variants (https, www, trailing slash)
+    2. Parent path recovery
+    3. Homepage crawl + fuzzy matching
+    """
 
-        # Fetch the homepage or directory page
-        r = safe_get(base)
-        if not r or r.status_code != 200:
-            return None
+    # STEP 1: Try simple variants
+    for u in try_simple_variants(url):
+        if url_works(u):
+            return u
 
-        soup = BeautifulSoup(r.text, "html.parser")
-        all_links = [a.get("href") for a in soup.find_all("a")]
+    # STEP 2: Parent path fallback
+    for u in try_parent_paths(url):
+        if url_works(u):
+            return u
 
-        slug = get_slug(url)
-        scored = []
+    # STEP 3: Homepage crawl & fuzzy match
+    homepage_links = crawl_homepage(url)
+    if homepage_links:
+        match = fuzzy_best_match(url, homepage_links)
+        if match and url_works(match):
+            return match
 
-        # Score links based on similarity
-        for link in all_links:
-            if not link:
-                continue
-
-            full = urljoin(base, link)
-            if not full.startswith(base):
-                continue  # ignore external links
-
-            link_slug = get_slug(full)
-            if not link_slug:
-                continue
-
-            # Slug similarity
-            score = difflib.SequenceMatcher(None, slug, link_slug).ratio()
-            if score > 0.30:  # lower threshold = more flexible
-                scored.append((score, full))
-
-        # Sort by best match
-        scored.sort(reverse=True, key=lambda x: x[0])
-
-        # Return best working link
-        for _, link in scored:
-            check = safe_get(link)
-            if check and check.status_code == 200:
-                return link
-
-        return None
-
-    except Exception as e:
-        return None
+    # STOP HERE (as requested)
+    return None
 
 
-# ----------------------------------------------------
-# Process a single URL
-# ----------------------------------------------------
-def process_single_url(url):
-    try:
-        r = safe_get(url)
+# -----------------------------------------------------
+# PROCESS A SINGLE URL (used by your API)
+# -----------------------------------------------------
 
-        # Case 1: URL works properly
-        if r and r.status_code == 200:
-            return {
-                "input": url,
-                "working": True,
-                "status": r.status_code,
-                "alternative": None,
-                "error": None
-            }
-
-        # Case 2: URL broken – try finding alternative
-        alt = find_alternative(url)
-
+def process_single_url(url: str):
+    """
+    Combined function used by your API:
+    - check if URL works
+    - if not, try to find alternative
+    """
+    if not is_valid_url(url):
         return {
-            "input": url,
-            "working": False,
-            "status": r.status_code if r else None,
-            "alternative": alt,
-            "error": None if r else "Request failed or timed out"
-        }
-
-    except Exception as e:
-        return {
-            "input": url,
-            "working": False,
+            "url": url,
+            "valid": False,
             "status": None,
-            "alternative": None,
-            "error": str(e)
+            "final_url": None,
+            "alternative": None
         }
 
+    status = check_url_status(url)
 
-# ----------------------------------------------------
-# Process bulk file (TXT with one URL per line)
-# ----------------------------------------------------
-def process_bulk_file(file):
-    if not file:
-        return []
+    if status["ok"]:
+        return {
+            "url": url,
+            "valid": True,
+            "status": status["status_code"],
+            "final_url": status["final_url"],
+            "alternative": None
+        }
 
-    urls = file.read().decode().splitlines()
-    results = []
+    # URL broken → find alternative
+    alternative = find_alternative(url)
 
-    for url in urls:
-        if url.strip():
-            results.append(process_single_url(url.strip()))
-
-    return results
+    return {
+        "url": url,
+        "valid": False,
+        "status": status["status_code"],
+        "final_url": status["final_url"],
+        "alternative": alternative
+    }
