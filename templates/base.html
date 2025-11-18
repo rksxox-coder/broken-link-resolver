@@ -7,61 +7,93 @@
 
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background: #f8f9fa;
-            padding: 20px;
             margin: 0;
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: linear-gradient(135deg, #c9d6ff, #e2e2e2);
         }
 
         .container {
-            max-width: 600px;
-            background: #fff;
-            margin: auto;
-            padding: 20px;
-            color: #333;
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            max-width: 700px;
+            margin: 40px auto;
+            padding: 25px;
+            background: #ffffffcc;
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            box-shadow: 0 4px 30px rgba(0,0,0,0.1);
+            animation: fadeIn 0.6s ease;
         }
 
-        h1, h2 {
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px);}
+            to { opacity: 1; transform: translateY(0);}
+        }
+
+        h1 {
             text-align: center;
-            color: #0056b3;
+            font-size: 28px;
+            margin-bottom: 10px;
+            color: #1a2a6c;
+        }
+
+        h2 {
+            color: #1a2a6c;
+            margin-top: 25px;
+            margin-bottom: 10px;
+            font-size: 20px;
         }
 
         input[type="text"], input[type="file"] {
             width: 100%;
             padding: 12px;
-            margin-top: 10px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
+            border: 1px solid #aaa;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            font-size: 15px;
+            background: #f7f7f7;
         }
 
         button {
             width: 100%;
             padding: 12px;
-            margin-top: 10px;
-            background: #0056b3;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
             font-size: 16px;
+            border: none;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            background: linear-gradient(90deg, #1a2a6c, #6b9dfc);
+            transition: 0.3s ease;
         }
 
         button:hover {
-            background: #003d80;
+            opacity: 0.85;
+            transform: scale(1.02);
         }
 
         .result-box {
-            padding: 15px;
-            background: #e9ecef;
-            margin-top: 20px;
-            border-radius: 6px;
+            padding: 18px;
+            background: #f8f9ff;
+            border-left: 4px solid #1a2a6c;
+            margin: 18px 0;
+            border-radius: 10px;
         }
 
-        .success { color: green; }
-        .error { color: red; }
-        .alt-link { margin-top: 10px; font-weight: bold; }
+        .success { color: green; font-weight: bold; }
+        .error { color: #c40000; font-weight: bold; }
+        a.alt-link { font-weight: bold; color: #0047ff; }
+
+        .back-link {
+            text-align: center;
+            display: block;
+            margin-top: 25px;
+            text-decoration: none;
+            font-size: 16px;
+            color: #1a2a6c;
+            font-weight: bold;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 
