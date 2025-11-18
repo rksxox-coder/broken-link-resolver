@@ -1,0 +1,6 @@
+v: 0
+micros:
+  - name: urlfinder
+    src: .
+    engine: python3.11
+    run: python main.py
