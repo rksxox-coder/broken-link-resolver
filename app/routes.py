@@ -51,25 +51,6 @@ def api_find():
     }), 200
 
 
-@main_blueprint.route("/api/bulk", methods=["POST"])
-def api_bulk():
-    body = request.get_json(silent=True)
-
-    if not body or "urls" not in body:
-        return jsonify({
-            "success": False,
-            "error": "POST JSON must contain a 'urls' list"
-        }), 400
-
-    results = [process_single_url(u) for u in body["urls"]]
-
-    return jsonify({
-        "success": True,
-        "count": len(results),
-        "results": results
-    }), 200
-
-
 
 
 @main_blueprint.route("/download", methods=["POST"])
