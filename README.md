@@ -1,6 +1,6 @@
 # 🔗 URL Alternative Finder  
 A simple web-based tool that checks if a URL is broken and suggests the closest working alternative by testing the original link and its parent directories.  
-Supports bulk CSV uploads and works even on free cloud hosting like Render.
+Supports bulk CSV uploads and works even on free cloud hosting.
 
 ---
 
