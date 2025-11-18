@@ -18,3 +18,12 @@ def upload_file():
     file = request.files.get("file")
     results = process_bulk_file(file)
     return render_template("result.html", results=results)
+
+@main_blueprint.route("/api/find", methods=["GET"])
+def api_find():
+    url = request.args.get("url")
+    if not url:
+        return {"error": "Missing 'url' parameter"}, 400
+    
+    result = process_single_url(url)
+    return result, 200
