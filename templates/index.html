@@ -1,30 +1,61 @@
-<!-- templates/base.html -->
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Broken Link Resolver</title>
+{% extends "base.html" %}
+{% block content %}
 
-    <!-- Tailwind CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+<div class="max-w-3xl mx-auto p-8 rounded-2xl bg-gray-900 shadow-xl">
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-</head>
+    <h2 class="text-3xl font-bold text-center mb-6 text-blue-300">
+        Check Broken Links Instantly
+    </h2>
 
-<body class="bg-gray-950 text-gray-200 min-h-screen">
+    <!-- SINGLE URL FORM -->
+    <form action="/check" method="POST" class="mb-10">
+        <label class="block mb-2 text-lg">Enter a URL:</label>
 
-    <!-- HEADER -->
-    <header class="p-5 border-b border-gray-800 bg-gray-900">
-        <div class="container mx-auto text-center text-2xl font-bold text-blue-400">
-            🔗 Broken Link Resolver
+        <div class="flex gap-3">
+            <input 
+                type="text" 
+                name="url"
+                class="flex-1 p-3 rounded-lg bg-gray-800 border border-gray-700 text-gray-300"
+                placeholder="https://example.com/page"
+                required
+            >
+            <button
+                class="bg-blue-600 hover:bg-blue-700 px-5 py-3 rounded-lg text-white font-semibold"
+                onclick="showLoader()"
+            >
+                Check
+            </button>
         </div>
-    </header>
+    </form>
 
-    <!-- MAIN CONTENT -->
-    <main class="container mx-auto py-10 px-4">
-        {% block content %}{% endblock %}
-    </main>
+    <!-- FILE UPLOAD -->
+    <form action="/upload" method="POST" enctype="multipart/form-data">
 
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
-</body>
-</html>
+        <label class="block mb-2 text-lg">Upload a file (CSV/TXT/XLSX):</label>
+
+        <div 
+            id="drop-area"
+            class="w-full p-10 border-2 border-dashed border-gray-600 rounded-xl text-center 
+                   bg-gray-800 cursor-pointer hover:border-blue-400 transition"
+        >
+            <p class="text-gray-400">Drag & drop file here</p>
+            <p class="text-gray-500 text-sm">or click to browse</p>
+            <input type="file" name="file" id="fileElem" class="hidden" required>
+        </div>
+
+        <button 
+            class="w-full mt-5 bg-green-600 hover:bg-green-700 px-5 py-3 rounded-lg text-white font-semibold"
+            onclick="showLoader()"
+        >
+            Upload & Process
+        </button>
+    </form>
+</div>
+
+<!-- LOADER -->
+<div id="loader" class="hidden text-center mt-5">
+    <div class="animate-spin h-10 w-10 border-4 border-blue-400 border-t-transparent rounded-full mx-auto"></div>
+    <p class="text-blue-300 mt-2">Processing...</p>
+</div>
+
+{% endblock %}
