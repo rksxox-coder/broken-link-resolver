@@ -2,6 +2,9 @@ import requests
 from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
 from difflib import SequenceMatcher
+import csv
+import io
+import pandas as pd
 
 headers = {
     "User-Agent": "Mozilla/5.0"
@@ -235,3 +238,50 @@ def process_single_url(url: str):
         "final_url": status["final_url"],
         "alternative": alternative
     }
+
+
+def extract_urls_from_file(file):
+    """Reads URLs from CSV or XLSX and returns a list."""
+    filename = file.filename.lower()
+
+    urls = []
+
+    try:
+        if filename.endswith(".csv"):
+            stream = io.StringIO(file.stream.read().decode("utf-8"))
+            reader = csv.reader(stream)
+            for row in reader:
+                if row:
+                    urls.append(row[0].strip())
+
+        elif filename.endswith(".xlsx"):
+            df = pd.read_excel(file)
+            first_col = df.columns[0]
+            urls = df[first_col].dropna().astype(str).tolist()
+
+    except Exception as e:
+        print("File read error:", e)
+
+    return urls
+
+
+def process_bulk_file(file):
+    """Processes CSV or XLSX and returns results list."""
+    urls = extract_urls_from_file(file)
+    results = []
+
+    for url in urls:
+        try:
+            result = process_single_url(url)
+            results.append(result)
+        except Exception as e:
+            results.append({
+                "url": url,
+                "valid": False,
+                "status": None,
+                "final_url": None,
+                "alternative": None,
+                "error": str(e)
+            })
+
+    return results
