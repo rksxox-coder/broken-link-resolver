@@ -30,3 +30,35 @@ def check_url_status(url):
             "is_working": False,
             "error": str(e)
         }
+
+def process_single_url(url):
+    """
+    Main function used by both frontend + API.
+    Checks if URL works, returns alternative if broken.
+    """
+    try:
+        info = check_url_status(url)
+
+        if info["is_working"]:
+            return {
+                "input": url,
+                "working": True,
+                "final_url": info["final_url"]
+            }
+
+        # URL is broken → try finding replacement
+        alternative = find_alternative(url)
+
+        return {
+            "input": url,
+            "working": False,
+            "alternative": alternative,
+            "error": info["error"]
+        }
+
+    except Exception as e:
+        return {
+            "input": url,
+            "working": False,
+            "error": str(e)
+        }
