@@ -1,84 +1,83 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Result - Broken Link Resolver</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
+{% extends "base.html" %}
+{% block content %}
 
-<div class="header">🔍 Results</div>
+<div class="max-w-4xl mx-auto p-8 rounded-2xl bg-gray-900 shadow-xl">
 
-<div class="container">
+    <h2 class="text-3xl font-bold text-blue-300 text-center mb-6">Result</h2>
 
+    <!-- SINGLE RESULT -->
     {% if result %}
-        <h2>Single URL Result</h2>
+    <div class="p-5 rounded-xl bg-gray-800">
 
-        <table class="result-table">
-            <tr>
-                <th>Input URL</th>
-                <td>{{ result.url }}</td>
-            </tr>
-            <tr>
-                <th>Status</th>
-                <td class="{{ 'status-ok' if result.valid else 'status-broken' }}">
-                    {{ result.status }}
-                </td>
-            </tr>
-            <tr>
-                <th>Final URL</th>
-                <td>
-                    {% if result.final_url %}
-                        <a href="{{ result.final_url }}" target="_blank">{{ result.final_url }}</a>
-                    {% else %}
-                        -
-                    {% endif %}
-                </td>
-            </tr>
-            <tr>
-                <th>Alternative</th>
-                <td>
-                    {% if result.alternative %}
-                        <a href="{{ result.alternative }}" target="_blank">{{ result.alternative }}</a>
-                    {% else %}
-                        No alternative found
-                    {% endif %}
-                </td>
-            </tr>
-        </table>
+        <p class="mb-2">
+            <span class="font-semibold">Input URL:</span> 
+            <span class="text-gray-300">{{ result.input }}</span>
+        </p>
+
+        <p>
+            <span class="font-semibold">Status:</span>
+
+            {% if result.working %}
+                <span class="text-green-400 font-bold">Working ✔</span>
+            {% else %}
+                <span class="text-red-400 font-bold">Broken ✘</span>
+            {% endif %}
+        </p>
+
+        {% if result.alternative %}
+        <p class="mt-2">
+            <span class="font-semibold">Suggested Alternative:</span>
+            <a href="{{ result.alternative }}" class="text-blue-400 underline">
+                {{ result.alternative }}
+            </a>
+        </p>
+        {% endif %}
+
+        <p class="mt-2 text-gray-400 text-sm">
+            Error: {{ result.error }}
+        </p>
+
+    </div>
     {% endif %}
 
+    <!-- BULK RESULTS -->
     {% if results %}
-        <h2>Bulk Processing Results</h2>
-
-        <table class="result-table">
+    <table class="w-full mt-6 border border-gray-700 rounded-lg overflow-hidden">
+        <thead class="bg-gray-800">
             <tr>
-                <th>Input URL</th>
-                <th>Status</th>
-                <th>Alternative</th>
+                <th class="p-3 border-b border-gray-700">Input URL</th>
+                <th class="p-3 border-b border-gray-700">Status</th>
+                <th class="p-3 border-b border-gray-700">Alternative</th>
             </tr>
-
-            {% for r in results %}
-                <tr>
-                    <td>{{ r.url }}</td>
-                    <td class="{{ 'status-ok' if r.valid else 'status-broken' }}">{{ r.status }}</td>
-                    <td>
-                        {% if r.alternative %}
-                            <a href="{{ r.alternative }}" target="_blank">{{ r.alternative }}</a>
-                        {% else %} - {% endif %}
-                    </td>
-                </tr>
+        </thead>
+        <tbody>
+            {% for item in results %}
+            <tr class="border-b border-gray-700">
+                <td class="p-3">{{ item.input }}</td>
+                <td class="p-3">
+                    {% if item.working %}
+                        <span class="text-green-400 font-bold">Working ✔</span>
+                    {% else %}
+                        <span class="text-red-400 font-bold">Broken ✘</span>
+                    {% endif %}
+                </td>
+                <td class="p-3">
+                    {% if item.alternative %}
+                    <a href="{{ item.alternative }}" class="text-blue-400 underline">
+                        {{ item.alternative }}
+                    </a>
+                    {% else %}
+                        <span class="text-gray-500">—</span>
+                    {% endif %}
+                </td>
+            </tr>
             {% endfor %}
-        </table>
+        </tbody>
+    </table>
     {% endif %}
 
-    {% if download_ready %}
-    <a href="/download" class="btn btn-primary" style="margin-top:20px;">
-        Download Results as CSV
-    </a>
-{% endif %}
-
+    <a href="/" class="mt-6 inline-block text-blue-400 underline">← Go back</a>
 
 </div>
 
-</body>
-</html>
+{% endblock %}
