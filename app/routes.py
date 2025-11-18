@@ -2,6 +2,8 @@ from flask import Blueprint, render_template, request
 from .utils import process_single_url
 from flask import send_file, session
 from datetime import timedelta
+import csv
+import io
 
 main_blueprint = Blueprint("main", __name__)
 
@@ -68,21 +70,43 @@ def api_bulk():
     }), 200
 
 
-@main_blueprint.route("/download", methods=["GET"])
-def download_results():
-    results = session.get("bulk_results")
 
-    if not results:
-        return "No results to download", 400
 
-    csv_file = generate_csv(results)
+@main_blueprint.route("/download", methods=["POST"])
+def download_csv():
+    """
+    Accepts JSON data of results from frontend
+    and returns a CSV file for download
+    """
+    import json
+    data = request.form.get("results")
+    if not data:
+        return {"error": "No results provided"}, 400
+
+    results = json.loads(data)
+
+    # Create CSV in-memory
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Input URL", "Working", "Alternative", "Error"])
+
+    for item in results:
+        writer.writerow([
+            item.get("input", ""),
+            "Yes" if item.get("working") else "No",
+            item.get("alternative", ""),
+            item.get("error", "")
+        ])
+
+    output.seek(0)
 
     return send_file(
-        io.BytesIO(csv_file.getvalue().encode()),
+        io.BytesIO(output.getvalue().encode()),
         mimetype="text/csv",
         as_attachment=True,
-        download_name="broken-link-results.csv"
+        download_name="broken_link_results.csv"
     )
+
 
 @main_blueprint.route("/api/bulk", methods=["POST"])
 def api_bulk():
