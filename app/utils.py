@@ -4,6 +4,8 @@ from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 from difflib import SequenceMatcher
 import re
+import pandas as pd
+import io
 
 # ============================================================================
 # 0. CONFIG
@@ -259,4 +261,26 @@ async def process_bulk(urls):
     Process multiple URLs concurrently using asyncio.gather.
     """
     tasks = [asyncio.create_task(process_single_url(u)) for u in urls]
+    return await asyncio.gather(*tasks)
+
+
+def read_bulk_file(file):
+    filename = file.filename.lower()
+
+    if filename.endswith(".txt"):
+        return [line.strip() for line in file.read().decode("utf-8").splitlines() if line.strip()]
+
+    if filename.endswith(".csv"):
+        df = pd.read_csv(io.StringIO(file.read().decode("utf-8")))
+        return df[df.columns[0]].dropna().astype(str).tolist()
+
+    if filename.endswith(".xlsx"):
+        df = pd.read_excel(file)
+        return df[df.columns[0]].dropna().astype(str).tolist()
+
+    return None
+
+
+async def async_process_bulk(urls):
+    tasks = [asyncio.create_task(process_single_url(url)) for url in urls]
     return await asyncio.gather(*tasks)
