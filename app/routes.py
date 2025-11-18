@@ -17,8 +17,13 @@ def check_url():
 @main_blueprint.route("/upload", methods=["POST"])
 def upload_file():
     file = request.files.get("file")
+
+    if not file:
+        return render_template("result.html", error="No file uploaded")
+
     results = process_bulk_file(file)
     return render_template("result.html", results=results)
+
 
 @main_blueprint.route("/api/find", methods=["GET"])
 def api_find():
