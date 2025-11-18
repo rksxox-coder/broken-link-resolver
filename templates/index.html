@@ -1,18 +1,38 @@
-{% extends "base.html" %}
-{% block content %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Broken Link Resolver</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
 
-<h1>🔗 Broken Link Resolver</h1>
+<div class="header">🔗 Broken Link Resolver</div>
 
-<h2>Check Single URL</h2>
-<form action="/check" method="POST">
-    <input type="text" name="url" placeholder="Enter any URL (broken or working)" required>
-    <button type="submit">Check Now</button>
-</form>
+<div class="container">
 
-<h2>Bulk URL Check (CSV/TXT)</h2>
-<form action="/upload" method="POST" enctype="multipart/form-data">
-    <input type="file" name="file" accept=".txt,.csv" required>
-    <button type="submit">Upload & Process</button>
-</form>
+    <h2>Check a Single URL</h2>
+    <form action="/check" method="POST">
+        <label>Enter URL</label>
+        <input type="text" name="url" placeholder="https://example.com/page">
+        <button type="submit">Check Now</button>
+    </form>
 
-{% endblock %}
+    <hr>
+
+    <h2>Upload CSV / Excel</h2>
+
+    <form action="/upload" method="POST" enctype="multipart/form-data">
+        <div id="drop-area" class="file-drop">
+            Drag & Drop File Here<br><small>(CSV or XLSX)</small>
+        </div>
+
+        <br>
+        <input type="file" id="file-input" name="file" style="display:none;">
+        <button type="submit">Upload & Process</button>
+    </form>
+
+</div>
+
+<script src="/static/js/main.js"></script>
+</body>
+</html>
