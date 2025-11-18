@@ -285,3 +285,25 @@ def process_bulk_file(file):
             })
 
     return results
+
+def generate_csv(results):
+    """Creates CSV content from the bulk results list."""
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Header
+    writer.writerow(["Input URL", "Working", "Status", "Final URL", "Alternative", "Error"])
+
+    # Rows
+    for r in results:
+        writer.writerow([
+            r.get("input"),
+            r.get("working"),
+            r.get("status"),
+            r.get("final_url"),
+            r.get("alternative"),
+            r.get("error")
+        ])
+
+    output.seek(0)
+    return output
