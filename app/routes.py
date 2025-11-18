@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request
-from .utils import process_single_url
+from .utils import process_single_url, process_bulk_file
 
 main_blueprint = Blueprint("main", __name__)
 
