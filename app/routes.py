@@ -124,6 +124,14 @@ def api_bulk():
     results = asyncio.run(async_process_bulk(urls))
     return {"results": results}
 
+@main_blueprint.route("/healthz", methods=["GET"])
+def health_check():
+    """
+    Simple health check for load balancers / uptime monitors.
+    Returns 200 OK when server is running.
+    """
+    return {"status": "ok"}, 200
+
 
 @main_blueprint.after_request
 def add_headers(response):
