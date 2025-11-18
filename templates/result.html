@@ -1,56 +1,77 @@
-{% extends "base.html" %}
-{% block content %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Result - Broken Link Resolver</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
 
-<h1>📄 URL Results</h1>
+<div class="header">🔍 Results</div>
 
-{% if result %}
-    <div class="result-box">
-        <p><strong>Input URL:</strong> {{ result.input }}</p>
+<div class="container">
 
-        {% if result.working %}
-            <p class="success">✓ This URL is working ({{ result.status }})</p>
-        {% else %}
-            <p class="error">✗ This URL is broken</p>
-            <p>Status Code: {{ result.status }}</p>
+    {% if result %}
+        <h2>Single URL Result</h2>
 
-            {% if result.alternative %}
-                <p>Suggested Alternative:
-                    <a class="alt-link" href="{{ result.alternative }}" target="_blank">
-                        {{ result.alternative }}
-                    </a>
-                </p>
-            {% else %}
-                <p>No alternative link found.</p>
-            {% endif %}
-        {% endif %}
-    </div>
-{% endif %}
+        <table class="result-table">
+            <tr>
+                <th>Input URL</th>
+                <td>{{ result.url }}</td>
+            </tr>
+            <tr>
+                <th>Status</th>
+                <td class="{{ 'status-ok' if result.valid else 'status-broken' }}">
+                    {{ result.status }}
+                </td>
+            </tr>
+            <tr>
+                <th>Final URL</th>
+                <td>
+                    {% if result.final_url %}
+                        <a href="{{ result.final_url }}" target="_blank">{{ result.final_url }}</a>
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th>Alternative</th>
+                <td>
+                    {% if result.alternative %}
+                        <a href="{{ result.alternative }}" target="_blank">{{ result.alternative }}</a>
+                    {% else %}
+                        No alternative found
+                    {% endif %}
+                </td>
+            </tr>
+        </table>
+    {% endif %}
 
-{% if results %}
-    {% for item in results %}
-        <div class="result-box">
-            <p><strong>Input URL:</strong> {{ item.input }}</p>
+    {% if results %}
+        <h2>Bulk Processing Results</h2>
 
-            {% if item.working %}
-                <p class="success">✓ Working ({{ item.status }})</p>
-            {% else %}
-                <p class="error">✗ Broken</p>
-                <p>Status Code: {{ item.status }}</p>
+        <table class="result-table">
+            <tr>
+                <th>Input URL</th>
+                <th>Status</th>
+                <th>Alternative</th>
+            </tr>
 
-                {% if item.alternative %}
-                    <p>Suggested:
-                        <a class="alt-link" href="{{ item.alternative }}" target="_blank">
-                            {{ item.alternative }}
-                        </a>
-                    </p>
-                {% else %}
-                    <p>No alternative found.</p>
-                {% endif %}
-            {% endif %}
-        </div>
-    {% endfor %}
-{% endif %}
+            {% for r in results %}
+                <tr>
+                    <td>{{ r.url }}</td>
+                    <td class="{{ 'status-ok' if r.valid else 'status-broken' }}">{{ r.status }}</td>
+                    <td>
+                        {% if r.alternative %}
+                            <a href="{{ r.alternative }}" target="_blank">{{ r.alternative }}</a>
+                        {% else %} - {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% endif %}
 
-<a href="/" class="back-link">← Check More URLs</a>
+</div>
 
-{% endblock %}
+</body>
+</html>
