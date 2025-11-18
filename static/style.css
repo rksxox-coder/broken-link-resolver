@@ -1,0 +1,6 @@
+/* static/styles.css */
+
+#drop-area:hover {
+    transform: scale(1.02);
+    transition: 0.2s ease-in-out;
+}
