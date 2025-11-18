@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request
 from .utils import process_single_url
 
+
 main_blueprint = Blueprint("main", __name__)
 
 @main_blueprint.route("/", methods=["GET"])
