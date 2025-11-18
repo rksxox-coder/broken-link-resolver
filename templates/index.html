@@ -1,24 +1,20 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>URL Alternative Finder</title>
-    <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Broken Link Resolver</h1>
 
 <h2>Check Single URL</h2>
-<form method="POST" action="/check">
+<form action="/check" method="POST">
     <input type="text" name="url" placeholder="Enter URL" required>
-    <button type="submit">Check</button>
+    <button type="submit">Check URL</button>
 </form>
 
 <hr>
 
-<h2>Upload CSV File</h2>
-<form method="POST" action="/upload" enctype="multipart/form-data">
-    <input type="file" name="file" accept=".csv" required>
-    <button type="submit">Upload</button>
+<h2>Bulk URL Check (CSV/TXT)</h2>
+<form action="/upload" method="POST" enctype="multipart/form-data">
+    <input type="file" name="file" accept=".txt,.csv" required>
+    <button type="submit">Upload File</button>
 </form>
 
-</body>
-</html>
+{% endblock %}
