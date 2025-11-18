@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>URL Alternative Finder</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<h2>Check Single URL</h2>
+<form method="POST" action="/check">
+    <input type="text" name="url" placeholder="Enter URL" required>
+    <button type="submit">Check</button>
+</form>
+
+<hr>
+
+<h2>Upload CSV File</h2>
+<form method="POST" action="/upload" enctype="multipart/form-data">
+    <input type="file" name="file" accept=".csv" required>
+    <button type="submit">Upload</button>
+</form>
+
+</body>
+</html>
