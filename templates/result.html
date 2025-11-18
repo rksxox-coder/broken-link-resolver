@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>URL Result</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<h2>Results</h2>
+
+{% if result %}
+    <p><b>Input URL:</b> {{ result.input }}</p>
+    <p><b>Alternative:</b> {{ result.alternative }}</p>
+{% endif %}
+
+{% if results %}
+<table border="1" cellpadding="8" cellspacing="0">
+    <tr>
+        <th>Input URL</th>
+        <th>Alternative</th>
+    </tr>
+
+    {% for r in results %}
+    <tr>
+        <td>{{ r.input }}</td>
+        <td>{{ r.alternative }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+
+<br><br>
+<a href="/">Go Back</a>
+
+</body>
+</html>
