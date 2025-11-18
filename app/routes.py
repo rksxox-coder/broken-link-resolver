@@ -23,7 +23,12 @@ def upload_file():
         return render_template("result.html", error="No file uploaded")
 
     results = process_bulk_file(file)
-    return render_template("result.html", results=results)
+
+    # store results in session
+    session["bulk_results"] = results
+
+    return render_template("result.html", results=results, download_ready=True)
+
 
 
 @main_blueprint.route("/api/find", methods=["GET"])
