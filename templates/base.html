@@ -1,105 +1,30 @@
+<!-- templates/base.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Broken Link Resolver</title>
 
-    <style>
-        body {
-            margin: 0;
-            font-family: "Segoe UI", Arial, sans-serif;
-            background: linear-gradient(135deg, #c9d6ff, #e2e2e2);
-        }
+    <!-- Tailwind CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
 
-        .container {
-            max-width: 700px;
-            margin: 40px auto;
-            padding: 25px;
-            background: #ffffffcc;
-            backdrop-filter: blur(10px);
-            border-radius: 16px;
-            box-shadow: 0 4px 30px rgba(0,0,0,0.1);
-            animation: fadeIn 0.6s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px);}
-            to { opacity: 1; transform: translateY(0);}
-        }
-
-        h1 {
-            text-align: center;
-            font-size: 28px;
-            margin-bottom: 10px;
-            color: #1a2a6c;
-        }
-
-        h2 {
-            color: #1a2a6c;
-            margin-top: 25px;
-            margin-bottom: 10px;
-            font-size: 20px;
-        }
-
-        input[type="text"], input[type="file"] {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #aaa;
-            border-radius: 10px;
-            margin-bottom: 12px;
-            font-size: 15px;
-            background: #f7f7f7;
-        }
-
-        button {
-            width: 100%;
-            padding: 12px;
-            font-size: 16px;
-            border: none;
-            border-radius: 10px;
-            color: white;
-            cursor: pointer;
-            background: linear-gradient(90deg, #1a2a6c, #6b9dfc);
-            transition: 0.3s ease;
-        }
-
-        button:hover {
-            opacity: 0.85;
-            transform: scale(1.02);
-        }
-
-        .result-box {
-            padding: 18px;
-            background: #f8f9ff;
-            border-left: 4px solid #1a2a6c;
-            margin: 18px 0;
-            border-radius: 10px;
-        }
-
-        .success { color: green; font-weight: bold; }
-        .error { color: #c40000; font-weight: bold; }
-        a.alt-link { font-weight: bold; color: #0047ff; }
-
-        .back-link {
-            text-align: center;
-            display: block;
-            margin-top: 25px;
-            text-decoration: none;
-            font-size: 16px;
-            color: #1a2a6c;
-            font-weight: bold;
-        }
-
-        .back-link:hover {
-            text-decoration: underline;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 
-<body>
-    <div class="container">
+<body class="bg-gray-950 text-gray-200 min-h-screen">
+
+    <!-- HEADER -->
+    <header class="p-5 border-b border-gray-800 bg-gray-900">
+        <div class="container mx-auto text-center text-2xl font-bold text-blue-400">
+            🔗 Broken Link Resolver
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="container mx-auto py-10 px-4">
         {% block content %}{% endblock %}
-    </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
