@@ -84,6 +84,22 @@ def download_results():
         download_name="broken-link-results.csv"
     )
 
+@main_blueprint.route("/api/bulk", methods=["POST"])
+def api_bulk():
+    file = request.files.get("file")
+
+    if not file:
+        return {"error": "No file uploaded"}, 400
+
+    from app.utils import read_bulk_file, async_process_bulk
+
+    urls = read_bulk_file(file)
+    if not urls:
+        return {"error": "No valid URLs found"}, 400
+
+    results = asyncio.run(async_process_bulk(urls))
+    return {"results": results}
+
 
 @main_blueprint.after_request
 def add_headers(response):
