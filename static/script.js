@@ -26,3 +26,8 @@ dropArea.addEventListener("drop", (e) => {
     fileInput.files = e.dataTransfer.files;
     dropArea.innerHTML = `<p class="text-green-400">Selected: ${fileInput.files[0].name}</p>`;
 });
+
+function prepareCSV() {
+    const results = {{ results | tojson | safe }};
+    document.getElementById("resultsData").value = JSON.stringify(results);
+}
