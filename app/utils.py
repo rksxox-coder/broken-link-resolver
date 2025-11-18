@@ -1,64 +1,32 @@
-"""
-Utility functions for URL Alternative Finder
+import requests
+from bs4 import BeautifulSoup
 
-This version uses the improved crawler (find_alternatives)
-and formats results for the Flask views to display.
-"""
-
-from .crawler import find_alternatives
-
-
-def process_single_url(url: str) -> dict:
-    """
-    Takes a single URL and returns:
-    - original_url
-    - top_alternative (best candidate or None)
-    - candidates (list with url, score, source, reason)
-    - status: 'working', 'alternative-found', 'not-found', 'error'
-    """
-
+def check_url_status(url):
     try:
-        candidates = find_alternatives(url)
-        response = {
-            "original_url": url,
-            "top_alternative": None,
-            "candidates": candidates,
-            "status": ""
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/120.0.0.0 Safari/537.36"
+            ),
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Connection": "keep-alive",
         }
 
-        if not candidates:
-            response["status"] = "not-found"
-            return response
+        response = requests.get(url, headers=headers, timeout=8)
 
-        # Top candidate is the one with highest score (already sorted)
-        top = candidates[0]
-        response["top_alternative"] = top["url"]
-
-        # If top candidate is the same as original URL, it means original works
-        if top["source"] == "original":
-            response["status"] = "working"
-        else:
-            response["status"] = "alternative-found"
-
-        return response
+        return {
+            "status_code": response.status_code,
+            "final_url": response.url,
+            "is_working": response.status_code in [200, 301, 302],
+            "error": None
+        }
 
     except Exception as e:
         return {
-            "original_url": url,
-            "top_alternative": None,
-            "candidates": [],
-            "status": "error",
+            "status_code": None,
+            "final_url": url,
+            "is_working": False,
             "error": str(e)
         }
-
-
-def process_multiple_urls(url_list: list) -> list:
-    """
-    Process a list of URLs and return structured results for each.
-    """
-
-    results = []
-    for url in url_list:
-        if url.strip():
-            results.append(process_single_url(url.strip()))
-    return results
