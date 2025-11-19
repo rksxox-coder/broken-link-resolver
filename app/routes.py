@@ -53,7 +53,7 @@ def api_find():
 
 from flask import jsonify
 
-@api_bp.route("/find", methods=["GET"])
+@main_blueprint.route("/api/find", methods=["GET"])
 def api_find():
     url = request.args.get("url")
     if not url:
